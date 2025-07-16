@@ -23,7 +23,7 @@ jobs:
       shell: powershell
       run: |
         $username = "GermanyUser"
-        $password = "GerRDP123!"  # ✅ Short & secure password under 14 chars
+        $password = "GerRDP123!"  # ✅ 14-character password
         net user $username $password /add
         Start-Sleep -Seconds 2
         net localgroup "Remote Desktop Users" $username /add
@@ -53,14 +53,14 @@ jobs:
             $result = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
             if ($result.tunnels) {
               $rdp = $result.tunnels[0].public_url -replace "tcp://", ""
-              echo "✅ Germany RDP Created Successfully!"
-              echo "🔗 IP Address: $rdp"
-              echo "👤 Username: GermanyUser"
-              echo "🔑 Password: GerRDP123!"
+              Write-Host "✅ Germany RDP Created Successfully!"
+              Write-Host "🔗 IP Address: $rdp"
+              Write-Host "👤 Username: GermanyUser"
+              Write-Host "🔑 Password: GerRDP123!"
               break
             }
           } catch {
-            echo "⏳ Waiting for Ngrok tunnel... Retry $i"
+            Write-Host "⏳ Waiting for Ngrok tunnel... Retry $i"
             Start-Sleep -Seconds 5
           }
         }
