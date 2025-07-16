@@ -1,66 +1,46 @@
-name: Germany RDP
+name: Free Germany RDP (LocalXpose)
 
 on:
   workflow_dispatch:
     inputs:
-      NGROK_AUTH_TOKEN:
-        description: 'Paste your Ngrok Auth Token here'
+      LXP_TOKEN:
+        description: 'Paste your LocalXpose Token (https://localxpose.io)'
         required: true
 
 jobs:
-  build:
+  rdp:
     runs-on: windows-latest
 
     steps:
-    - name: ✅ Install Ngrok
+    - name: 🔐 Create RDP User
       shell: powershell
       run: |
-        Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
-        Expand-Archive ngrok.zip -DestinationPath $env:USERPROFILE
-        Move-Item "$env:USERPROFILE\ngrok.exe" "C:\Windows\System32\ngrok.exe"
+        net user GermanyUser GerRDP123! /add
+        net localgroup "Remote Desktop Users" GermanyUser /add
+        net localgroup Administrators GermanyUser /add
 
-    - name: 👤 Create New User for RDP
-      shell: powershell
-      run: |
-        $username = "GermanyUser"
-        $password = "GerRDP123!"  # ✅ 14-character password
-        net user $username $password /add
-        Start-Sleep -Seconds 2
-        net localgroup "Remote Desktop Users" $username /add
-        Start-Sleep -Seconds 2
-        net localgroup administrators $username /add
-
-    - name: 🔓 Enable RDP & Firewall
+    - name: 🔓 Enable RDP and Firewall
       shell: powershell
       run: |
         Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-        Enable-PSRemoting -Force
 
-    - name: 🌐 Start Ngrok Tunnel (Germany Region)
+    - name: 🌐 Install LocalXpose
       shell: powershell
       run: |
-        ngrok authtoken "${{ github.event.inputs.NGROK_AUTH_TOKEN }}"
-        Start-Process -NoNewWindow -FilePath "ngrok" -ArgumentList "tcp --region=eu 3389"
-        Start-Sleep -Seconds 25
+        Invoke-WebRequest https://api.localxpose.io/api/v2/downloads/lxcli/windows-amd64 -OutFile lx.exe
 
-    - name: 🔍 Fetch and Show RDP Info
+    - name: 🚀 Start LocalXpose Tunnel (RDP)
       shell: powershell
       run: |
-        $retries = 5
-        for ($i = 1; $i -le $retries; $i++) {
-          try {
-            $result = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
-            if ($result.tunnels) {
-              $rdp = $result.tunnels[0].public_url -replace "tcp://", ""
-              Write-Host "✅ Germany RDP Created Successfully!"
-              Write-Host "🔗 IP Address: $rdp"
-              Write-Host "👤 Username: GermanyUser"
-              Write-Host "🔑 Password: GerRDP123!"
-              break
-            }
-          } catch {
-            Write-Host "⏳ Waiting for Ngrok tunnel... Retry $i"
-            Start-Sleep -Seconds 5
-          }
-        }
+        .\lx.exe authtoken ${{ github.event.inputs.LXP_TOKEN }}
+        Start-Process -NoNewWindow -FilePath ".\lx.exe" -ArgumentList "tcp 3389" 
+        Start-Sleep -Seconds 20
+
+    - name: 🖥️ Show RDP Info
+      shell: powershell
+      run: |
+        Write-Host "✅ Germany RDP Created via LocalXpose"
+        Write-Host "👤 Username: GermanyUser"
+        Write-Host "🔑 Password: GerRDP123!"
+        Write-Host "🔗 Tunnel running — check your LocalXpose dashboard for RDP address"
