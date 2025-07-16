@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       NGROK_AUTH_TOKEN:
-        description: 'Enter your Ngrok Auth Token'
+        description: 'Paste your Ngrok Authtoken here'
         required: true
 
 jobs:
@@ -12,34 +12,56 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: Install Ngrok
+    - name: ✅ Install Ngrok
       shell: powershell
       run: |
         Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
         Expand-Archive ngrok.zip -DestinationPath $env:USERPROFILE
-        $env:PATH += ";$env:USERPROFILE"
-        move-item $env:USERPROFILE\ngrok.exe C:\ngrok.exe
+        Move-Item "$env:USERPROFILE\ngrok.exe" "C:\Windows\System32\ngrok.exe"
 
-    - name: Enable RDP and Set Password
+    - name: 🔐 Enable RDP & Set Password
       shell: powershell
       run: |
+        # Enable the built-in Administrator account
+        net user Administrator /active:yes
+
+        # Set password
         net user Administrator MyGermanyRdp123!
-        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+        # Enable RDP
         Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections -Value 0
+
+        # Enable Firewall for RDP
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+        # Enable PowerShell Remoting
         Enable-PSRemoting -Force
 
-    - name: Start Ngrok Tunnel (Germany)
+    - name: 🌐 Start Ngrok Tunnel (Germany Region)
       shell: powershell
       run: |
-        C:\ngrok.exe authtoken "${{ github.event.inputs.NGROK_AUTH_TOKEN }}"
-        Start-Process -NoNewWindow -FilePath "C:\ngrok.exe" -ArgumentList "tcp --region=eu 3389"
-        Start-Sleep -Seconds 20
+        ngrok authtoken "${{ github.event.inputs.NGROK_AUTH_TOKEN }}"
+        Start-Process -NoNewWindow -FilePath "ngrok" -ArgumentList "tcp --region=eu 3389"
+        Start-Sleep -Seconds 25
 
-    - name: Show RDP Address
+    - name: 🔍 Fetch RDP IP and Show Login Info
       shell: powershell
       run: |
-        $tunnel = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
-        $rdp = $tunnel.tunnels.public_url -replace "tcp://", ""
-        echo "🔗 IP Address: $rdp"
-        echo "👤 Username: Administrator"
-        echo "🔑 Password: MyGermanyRdp123!"
+        $retries = 5
+        for ($i = 1; $i -le $retries; $i++) {
+          try {
+            $result = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
+            if ($result.tunnels) {
+              $rdp = $result.tunnels[0].public_url -replace "tcp://", ""
+              echo "✅ RDP is Ready!"
+              echo "🔗 IP Address: $rdp"
+              echo "👤 Username: Administrator"
+              echo "🔑 Password: MyGermanyRdp123!"
+              break
+            }
+          } catch {
+            echo "⏳ Waiting for Ngrok tunnel... Retry $i"
+            Start-Sleep -Seconds 5
+          }
+        }
+
