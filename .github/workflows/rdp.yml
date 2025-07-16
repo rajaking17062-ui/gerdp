@@ -22,9 +22,13 @@ jobs:
     - name: 👤 Create New User for RDP
       shell: powershell
       run: |
-        net user GermanyUser MySecurePassword123! /add
-        net localgroup "Remote Desktop Users" GermanyUser /add
-        net localgroup administrators GermanyUser /add
+        $username = "GermanyUser"
+        $password = "GerRDP123!"  # ✅ Short & secure password under 14 chars
+        net user $username $password /add
+        Start-Sleep -Seconds 2
+        net localgroup "Remote Desktop Users" $username /add
+        Start-Sleep -Seconds 2
+        net localgroup administrators $username /add
 
     - name: 🔓 Enable RDP & Firewall
       shell: powershell
@@ -52,7 +56,7 @@ jobs:
               echo "✅ Germany RDP Created Successfully!"
               echo "🔗 IP Address: $rdp"
               echo "👤 Username: GermanyUser"
-              echo "🔑 Password: MySecurePassword123!"
+              echo "🔑 Password: GerRDP123!"
               break
             }
           } catch {
