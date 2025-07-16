@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       NGROK_AUTH_TOKEN:
-        description: 'Paste your Ngrok Authtoken here'
+        description: 'Paste your Ngrok Auth Token here'
         required: true
 
 jobs:
@@ -19,22 +19,18 @@ jobs:
         Expand-Archive ngrok.zip -DestinationPath $env:USERPROFILE
         Move-Item "$env:USERPROFILE\ngrok.exe" "C:\Windows\System32\ngrok.exe"
 
-    - name: 🔐 Enable RDP & Set Password
+    - name: 👤 Create New User for RDP
       shell: powershell
       run: |
-        # Enable the built-in Administrator account
-        net user Administrator /active:yes
+        net user GermanyUser MySecurePassword123! /add
+        net localgroup "Remote Desktop Users" GermanyUser /add
+        net localgroup administrators GermanyUser /add
 
-        # Set password
-        net user Administrator MyGermanyRdp123!
-
-        # Enable RDP
+    - name: 🔓 Enable RDP & Firewall
+      shell: powershell
+      run: |
         Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections -Value 0
-
-        # Enable Firewall for RDP
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-
-        # Enable PowerShell Remoting
         Enable-PSRemoting -Force
 
     - name: 🌐 Start Ngrok Tunnel (Germany Region)
@@ -44,7 +40,7 @@ jobs:
         Start-Process -NoNewWindow -FilePath "ngrok" -ArgumentList "tcp --region=eu 3389"
         Start-Sleep -Seconds 25
 
-    - name: 🔍 Fetch RDP IP and Show Login Info
+    - name: 🔍 Fetch and Show RDP Info
       shell: powershell
       run: |
         $retries = 5
@@ -53,10 +49,10 @@ jobs:
             $result = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
             if ($result.tunnels) {
               $rdp = $result.tunnels[0].public_url -replace "tcp://", ""
-              echo "✅ RDP is Ready!"
+              echo "✅ Germany RDP Created Successfully!"
               echo "🔗 IP Address: $rdp"
-              echo "👤 Username: Administrator"
-              echo "🔑 Password: MyGermanyRdp123!"
+              echo "👤 Username: GermanyUser"
+              echo "🔑 Password: MySecurePassword123!"
               break
             }
           } catch {
@@ -64,4 +60,3 @@ jobs:
             Start-Sleep -Seconds 5
           }
         }
-
