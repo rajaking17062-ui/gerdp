@@ -1,0 +1,45 @@
+name: Germany RDP
+
+on:
+  workflow_dispatch:
+    inputs:
+      NGROK_AUTH_TOKEN:
+        description: 'Enter your Ngrok Auth Token'
+        required: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Install Ngrok
+      shell: powershell
+      run: |
+        Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip
+        Expand-Archive ngrok.zip -DestinationPath $env:USERPROFILE
+        $env:PATH += ";$env:USERPROFILE"
+        move-item $env:USERPROFILE\ngrok.exe C:\ngrok.exe
+
+    - name: Enable RDP and Set Password
+      shell: powershell
+      run: |
+        net user Administrator MyGermanyRdp123!
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections -Value 0
+        Enable-PSRemoting -Force
+
+    - name: Start Ngrok Tunnel (Germany)
+      shell: powershell
+      run: |
+        C:\ngrok.exe authtoken "${{ github.event.inputs.NGROK_AUTH_TOKEN }}"
+        Start-Process -NoNewWindow -FilePath "C:\ngrok.exe" -ArgumentList "tcp --region=eu 3389"
+        Start-Sleep -Seconds 20
+
+    - name: Show RDP Address
+      shell: powershell
+      run: |
+        $tunnel = Invoke-RestMethod -Uri "http://127.0.0.1:4040/api/tunnels"
+        $rdp = $tunnel.tunnels.public_url -replace "tcp://", ""
+        echo "🔗 IP Address: $rdp"
+        echo "👤 Username: Administrator"
+        echo "🔑 Password: MyGermanyRdp123!"
