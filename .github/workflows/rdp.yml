@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       LXP_TOKEN:
-        description: 'Paste your LocalXpose Token (https://localxpose.io)'
+        description: 'Paste your LocalXpose Token (Get it free from https://localxpose.io/account)'
         required: true
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - name: 🔐 Create RDP User
+    - name: 🧑 Create RDP User
       shell: powershell
       run: |
         net user GermanyUser GerRDP123! /add
@@ -25,22 +25,26 @@ jobs:
         Set-ItemProperty -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" -Name fDenyTSConnections -Value 0
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
-    - name: 🌐 Install LocalXpose
+    - name: 🌐 Install LocalXpose CLI
       shell: powershell
       run: |
-        Invoke-WebRequest https://api.localxpose.io/api/v2/downloads/lxcli/windows-amd64 -OutFile lx.exe
+        Invoke-WebRequest https://github.com/localxpose/cli/releases/download/v1.3.0/lx-windows-amd64.exe -OutFile lx.exe
+        Rename-Item -Path lx.exe -NewName lx.exe
 
-    - name: 🚀 Start LocalXpose Tunnel (RDP)
+    - name: 🚀 Start LocalXpose RDP Tunnel
       shell: powershell
       run: |
         .\lx.exe authtoken ${{ github.event.inputs.LXP_TOKEN }}
-        Start-Process -NoNewWindow -FilePath ".\lx.exe" -ArgumentList "tcp 3389" 
+        Start-Process -NoNewWindow -FilePath ".\lx.exe" -ArgumentList "tcp 3389"
         Start-Sleep -Seconds 20
 
-    - name: 🖥️ Show RDP Info
+    - name: ✅ Show RDP Info
       shell: powershell
       run: |
+        Write-Host ""
         Write-Host "✅ Germany RDP Created via LocalXpose"
+        Write-Host "🌍 Go to https://localxpose.io/dashboard to get your TCP RDP Link"
+        Write-Host "🖥️ Open Remote Desktop (mstsc) and paste host:port from dashboard"
         Write-Host "👤 Username: GermanyUser"
         Write-Host "🔑 Password: GerRDP123!"
-        Write-Host "🔗 Tunnel running — check your LocalXpose dashboard for RDP address"
+        Write-Host "⏱ Session Time: 6 hours (GitHub limit)"
